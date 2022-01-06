@@ -23,11 +23,12 @@ fn main() {
     let file_writer = std::fs::File::create("test").unwrap();
     let (sender, receiver) = std::sync::mpsc::channel();
     let byte_size = convert_to_bytes(args.bytes);
-    let runs_per_thread: i64 = (byte_size /args.chunk_size)/args.threads;
+    let chunk_size = convert_to_bytes(args.chunk_size);
+    let runs_per_thread: i64 = (byte_size /chunk_size)/args.threads;
     for _ in 0..args.threads {
         let buf = std::io::BufWriter::new(file_writer.try_clone().unwrap());
         let sen_clone = sender.clone();
-        let data = String::from_utf8(vec![b'a'; args.chunk_size.try_into().unwrap()]).unwrap();
+        let data = String::from_utf8(vec![b'a'; chunk_size.try_into().unwrap()]).unwrap();
         let _ = std::thread::spawn(move || thread(buf, data, runs_per_thread, sen_clone));
     }
     let mut counter = args.threads.clone();
