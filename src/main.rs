@@ -7,14 +7,14 @@ use clap::Parser;
 #[derive(Parser,Debug)]
 #[clap(about, version, author)]
 struct Args {
-    #[clap(short, long)]
+    #[clap(short, long, help="Number of threads to write with")]
     threads: i64,
-    #[clap(short, long)]
+    #[clap(short, long, help="Number of bytes to write. Can be provided with K/M/G suffixes to write in kb, mb and gb respectively. ex: -b 4G")]
     bytes: String,
-    #[clap(short, long)]
+    #[clap(short, long, help="Delete the file after the test is done.")]
     delete_file: bool,
-    #[clap(short, long)]
-    chunk_size: i64
+    #[clap(short, long, help="The size of every chunk that is written onto the drive. Can be provided with K/M/G suffixes.")]
+    chunk_size: String
 }
 
 fn main() {
@@ -22,8 +22,8 @@ fn main() {
     let start = std::time::SystemTime::now();
     let file_writer = std::fs::File::create("test").unwrap();
     let (sender, receiver) = std::sync::mpsc::channel();
-    let byte_size = convert_to_bytes(args.bytes);
-    let chunk_size = convert_to_bytes(args.chunk_size);
+    let byte_size = convert_to_bytes(args.bytes, String::from("bytes"));
+    let chunk_size = convert_to_bytes(args.chunk_size, String::from("chunk size"));
     let runs_per_thread: i64 = (byte_size /chunk_size)/args.threads;
     for _ in 0..args.threads {
         let buf = std::io::BufWriter::new(file_writer.try_clone().unwrap());
@@ -56,8 +56,12 @@ fn thread(mut file_buffer: std::io::BufWriter<File>, data: String, runs: i64, se
     sender.send(String::from("Done")).unwrap();
 }
 
-fn convert_to_bytes(unconverted: String) -> i64 {
-    let unit = unconverted.chars().last().unwrap().to_uppercase().last().unwrap();
+fn convert_to_bytes(unconverted: String, option: String) -> i64 {
+    let unit = unconverted.to_uppercase().chars().last().unwrap();
+    if unconverted[0..unconverted.len()-1].parse::<i64>().is_err() {
+        println!("The provided value for {} is not a valid number! ", option);
+        exit(0)
+    }
     let returner: i64 =
         match unit {
             'K' => unconverted[0..unconverted.len()-1].parse::<i64>().unwrap()*1024,
