@@ -10,7 +10,7 @@ struct Args {
     #[clap(short, long)]
     threads: i64,
     #[clap(short, long)]
-    bytes: i64,
+    bytes: String,
     #[clap(short, long)]
     delete_file: bool,
     #[clap(short, long)]
@@ -22,7 +22,8 @@ fn main() {
     let start = std::time::SystemTime::now();
     let file_writer = std::fs::File::create("test").unwrap();
     let (sender, receiver) = std::sync::mpsc::channel();
-    let runs_per_thread: i64 = (args.bytes/args.chunk_size)/args.threads;
+    let byte_size = convert_to_bytes(args.bytes);
+    let runs_per_thread: i64 = (byte_size /args.chunk_size)/args.threads;
     for _ in 0..args.threads {
         let buf = std::io::BufWriter::new(file_writer.try_clone().unwrap());
         let sen_clone = sender.clone();
@@ -52,4 +53,17 @@ fn thread(mut file_buffer: std::io::BufWriter<File>, data: String, runs: i64, se
         let _ = file_buffer.write(data.as_bytes());
     }
     sender.send(String::from("Done")).unwrap();
+}
+
+fn convert_to_bytes(unconverted: String) -> i64 {
+    let unit = unconverted.chars().last().unwrap().to_uppercase().last().unwrap();
+    let returner: i64 =
+        match unit {
+            'K' => unconverted[0..unconverted.len()-1].parse::<i64>().unwrap()*1024,
+            'M' => unconverted[0..unconverted.len()-1].parse::<i64>().unwrap()*1024*1024,
+            'G' => unconverted[0..unconverted.len()-1].parse::<i64>().unwrap()*1024*1024*1024,
+            'T' => unconverted[0..unconverted.len()-1].parse::<i64>().unwrap()*1024*1024*1024*1024,
+            _ => { unconverted.parse::<i64>().unwrap() }
+        };
+    returner
 }
